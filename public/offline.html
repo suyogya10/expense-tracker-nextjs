@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline — Expense Tracker</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #09090b;
+      color: #f4f4f5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+    .icon {
+      width: 72px;
+      height: 72px;
+      margin-bottom: 20px;
+      color: #10b981;
+    }
+    h1 {
+      font-size: 24px;
+      margin: 0 0 12px 0;
+      font-weight: 700;
+    }
+    p {
+      font-size: 15px;
+      color: #a1a1aa;
+      max-width: 360px;
+      line-height: 1.5;
+      margin: 0 0 28px 0;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #059669;
+      color: #ffffff;
+      padding: 12px 28px;
+      border-radius: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="1" y1="1" x2="23" y2="23"></line>
+    <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+    <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+    <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+    <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+    <line x1="12" y1="20" x2="12.01" y2="20"></line>
+  </svg>
+  <h1>You are currently offline</h1>
+  <p>Your local financial data is safely preserved. Once your connection is restored, the tracker will synchronize automatically.</p>
+  <button class="btn" onclick="window.location.reload()">Retry Connection</button>
+</body>
+</html>
