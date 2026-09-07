@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 import { SignJWT, jwtVerify } from 'jose';
 import bcrypt from 'bcryptjs';
 import { prisma } from './prisma';
@@ -44,7 +45,7 @@ export async function clearSession() {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async () => {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get(SESSION_COOKIE)?.value;
@@ -83,7 +84,7 @@ export async function getCurrentUser() {
   } catch (err) {
     return null;
   }
-}
+});
 
 export async function requireUser() {
   const user = await getCurrentUser();

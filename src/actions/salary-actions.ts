@@ -238,6 +238,44 @@ export async function getActiveSalaryCycle() {
   return activeCycle ? serializeCycle(activeCycle) : null;
 }
 
+export async function getLightweightActiveCycle(userId: string) {
+  const today = new Date();
+  const cycle =
+    (await prisma.salaryMonth.findFirst({
+      where: {
+        userId,
+        startDate: { lte: today },
+        endDate: { gte: today },
+      },
+      select: {
+        id: true,
+        name: true,
+        startDate: true,
+        endDate: true,
+      },
+      orderBy: { startDate: 'desc' },
+    })) ||
+    (await prisma.salaryMonth.findFirst({
+      where: { userId, status: 'ACTIVE' },
+      select: {
+        id: true,
+        name: true,
+        startDate: true,
+        endDate: true,
+      },
+      orderBy: { startDate: 'desc' },
+    }));
+
+  if (!cycle) return null;
+
+  return {
+    id: cycle.id,
+    name: cycle.name,
+    startDate: cycle.startDate.toISOString(),
+    endDate: cycle.endDate.toISOString(),
+  };
+}
+
 export async function getAllSalaryCycles() {
   const user = await getCurrentUser();
   if (!user) return [];

@@ -1,5 +1,6 @@
-import { getActiveSalaryCycle, getAllSalaryCycles } from '@/actions/salary-actions';
+import { getActiveSalaryCycle } from '@/actions/salary-actions';
 import { getCurrentUser } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import { calculateCycleProgress, calculateFinancialBalances } from '@/lib/salary-cycle';
 import { generateSmartInsights } from '@/lib/insights';
 import { DashboardView } from '@/components/dashboard/dashboard-view';
@@ -7,10 +8,9 @@ import { DashboardView } from '@/components/dashboard/dashboard-view';
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  const [user, activeCycle, allCycles] = await Promise.all([
+  const [user, activeCycle] = await Promise.all([
     getCurrentUser(),
     getActiveSalaryCycle(),
-    getAllSalaryCycles(),
   ]);
 
   if (!activeCycle) {
@@ -76,8 +76,25 @@ export default async function DashboardPage() {
     };
   }
 
-  // 5. Previous month outflow comparison
-  const previousCycle = allCycles.find((c) => c.id !== activeCycle.id);
+  // 5. Previous month outflow comparison (lightweight single-row query)
+  const previousCycle = user
+    ? await prisma.salaryMonth.findFirst({
+        where: {
+          userId: user.id,
+          id: { not: activeCycle.id },
+        },
+        orderBy: { startDate: 'desc' },
+        select: {
+          expenses: {
+            select: { amount: true },
+          },
+        },
+      })
+    : null;
+
+  const previousMonthOutflow = previousCycle
+    ? previousCycle.expenses.reduce((sum, e) => sum + Number(e.amount), 0)
+    : undefined;
 
   // 6. Generate Smart Insights
   const insights = generateSmartInsights({
@@ -91,7 +108,7 @@ export default async function DashboardPage() {
     daysRemaining: metrics.daysRemaining,
     currency: user?.currency || 'Rs.',
     topCategory,
-    previousMonthOutflow: previousCycle?.totalExpenses,
+    previousMonthOutflow,
   });
 
   return (

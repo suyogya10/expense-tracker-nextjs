@@ -5,9 +5,9 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { LayoutShell } from '@/components/layout-shell';
 import { PwaRegister } from '@/components/pwa-register';
 import { Toaster } from 'sonner';
-import { getActiveSalaryCycle } from '@/actions/salary-actions';
-import { getCategories, getPaymentMethods } from '@/actions/category-actions';
+import { getLightweightActiveCycle } from '@/actions/salary-actions';
 import { getCurrentUser } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -41,12 +41,23 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [currentUser, activeCycle, categories, paymentMethods] = await Promise.all([
-    getCurrentUser(),
-    getActiveSalaryCycle(),
-    getCategories(),
-    getPaymentMethods(),
-  ]);
+  const currentUser = await getCurrentUser();
+
+  const [activeCycle, categories, paymentMethods] = currentUser
+    ? await Promise.all([
+        getLightweightActiveCycle(currentUser.id),
+        prisma.category.findMany({
+          where: { userId: currentUser.id },
+          select: { id: true, name: true, icon: true, color: true, isInvestment: true },
+          orderBy: { name: 'asc' },
+        }),
+        prisma.paymentMethod.findMany({
+          where: { userId: currentUser.id },
+          select: { id: true, name: true, icon: true },
+          orderBy: { isDefault: 'desc' },
+        }),
+      ])
+    : [null, [], []];
 
   return (
     <html lang="en" suppressHydrationWarning>
