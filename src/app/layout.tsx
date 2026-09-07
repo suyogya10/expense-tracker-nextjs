@@ -8,6 +8,7 @@ import { Toaster } from 'sonner';
 import { getActiveSalaryCycle } from '@/actions/salary-actions';
 import { getCategories, getPaymentMethods } from '@/actions/category-actions';
 import { getCurrentUser } from '@/lib/auth';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -96,6 +97,7 @@ export default async function RootLayout({
           </LayoutShell>
           <Toaster position="top-center" richColors />
           <PwaRegister />
+          <SpeedInsights />
         </ThemeProvider>
       </body>
     </html>
