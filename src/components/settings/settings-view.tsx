@@ -1,14 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DynamicIcon } from '@/components/dynamic-icon';
 import { updateUserProfile, exportAllDataJSON, exportExpensesCSV } from '@/actions/data-actions';
-import { createCategory, deleteCategory, createPaymentMethod, deletePaymentMethod } from '@/actions/category-actions';
+import {
+  createCategory,
+  deleteCategory,
+  updateCategory,
+  randomizeCategoryColors,
+  createPaymentMethod,
+  deletePaymentMethod,
+} from '@/actions/category-actions';
 import { changePasswordAction, changeUsernameAction } from '@/actions/auth-actions';
+import { getRandomCategoryColor } from '@/lib/colors';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
@@ -33,6 +41,7 @@ import {
   AtSign,
   Users,
   Loader2,
+  Shuffle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -78,6 +87,16 @@ export function SettingsView({ user, categories, paymentMethods }: SettingsViewP
   const [newCatColor, setNewCatColor] = useState('#10b981');
   const [newCatIsInvestment, setNewCatIsInvestment] = useState(false);
   const [isAddingCat, setIsAddingCat] = useState(false);
+  const [isRandomizingColors, setIsRandomizingColors] = useState(false);
+
+  // Pick a distinct random color by default on client mount
+  useEffect(() => {
+    setNewCatColor(getRandomCategoryColor(categories.map((c) => c.color)));
+  }, [categories]);
+
+  const handleRerollColor = () => {
+    setNewCatColor(getRandomCategoryColor(categories.map((c) => c.color)));
+  };
 
   // New Payment Method Form
   const [newPmName, setNewPmName] = useState('');
@@ -163,20 +182,52 @@ export function SettingsView({ user, categories, paymentMethods }: SettingsViewP
     e.preventDefault();
     if (!newCatName.trim()) return;
     setIsAddingCat(true);
+    const catName = newCatName.trim();
     try {
       await createCategory({
-        name: newCatName.trim(),
+        name: catName,
         icon: newCatIcon,
         color: newCatColor,
         isInvestment: newCatIsInvestment,
       });
-      toast.success(`Category ${newCatName} created`);
+      toast.success(`Category "${catName}" created`);
       setNewCatName('');
+      // Automatically choose another distinct random color for the next category
+      setNewCatColor(
+        getRandomCategoryColor([...categories.map((c) => c.color), newCatColor])
+      );
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || 'Failed to create category');
     } finally {
       setIsAddingCat(false);
+    }
+  };
+
+  // Randomize all existing category colors
+  const handleRandomizeAllColors = async () => {
+    if (categories.length === 0) return;
+    setIsRandomizingColors(true);
+    try {
+      const res = await randomizeCategoryColors();
+      toast.success(`Randomized colors for all ${res.count} categories!`);
+      setNewCatColor(getRandomCategoryColor());
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to randomize category colors');
+    } finally {
+      setIsRandomizingColors(false);
+    }
+  };
+
+  // Update single category color
+  const handleUpdateCategoryColor = async (id: string, color: string) => {
+    try {
+      await updateCategory(id, { color });
+      toast.success('Category color updated');
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update category color');
     }
   };
 
@@ -568,14 +619,33 @@ export function SettingsView({ user, categories, paymentMethods }: SettingsViewP
 
       {/* 4. Categories Management */}
       <Card className="border-slate-200/80 dark:border-zinc-800 shadow-2xs">
-        <CardHeader className="pb-3 border-b border-slate-100 dark:border-zinc-800">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Tag className="w-4 h-4 text-emerald-600" />
-            <span>Categories ({categories.length})</span>
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Add custom categories or toggle investment classification.
-          </CardDescription>
+        <CardHeader className="pb-3 border-b border-slate-100 dark:border-zinc-800 flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Tag className="w-4 h-4 text-emerald-600" />
+              <span>Categories ({categories.length})</span>
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Add custom categories or toggle investment classification.
+            </CardDescription>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleRandomizeAllColors}
+            disabled={isRandomizingColors || categories.length === 0}
+            className="h-8 px-2.5 text-xs rounded-xl gap-1.5 font-medium border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 shadow-2xs"
+            title="Assign distinct random colors to all existing categories in one click"
+          >
+            {isRandomizingColors ? (
+              <Loader2 className="w-3.5 h-3.5 text-emerald-600 animate-spin" />
+            ) : (
+              <Shuffle className="w-3.5 h-3.5 text-emerald-600" />
+            )}
+            <span>Randomize Colors</span>
+          </Button>
         </CardHeader>
         <CardContent className="p-5 space-y-4">
           {/* Add Category Form */}
@@ -593,15 +663,26 @@ export function SettingsView({ user, categories, paymentMethods }: SettingsViewP
               />
             </div>
 
-            <div className="w-24">
-              <label className="block text-[11px] font-semibold text-slate-500 mb-1">
-                Color
-              </label>
+            <div className="w-28">
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] font-semibold text-slate-500">
+                  Color
+                </label>
+                <button
+                  type="button"
+                  onClick={handleRerollColor}
+                  className="text-[10px] text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-0.5 cursor-pointer"
+                  title="Roll another random color"
+                >
+                  <Shuffle className="w-2.5 h-2.5" />
+                  <span>Random</span>
+                </button>
+              </div>
               <input
                 type="color"
                 value={newCatColor}
                 onChange={(e) => setNewCatColor(e.target.value)}
-                className="h-10 w-full rounded-xl border border-slate-200 p-1 cursor-pointer bg-white dark:bg-zinc-900"
+                className="h-10 w-full rounded-xl border border-slate-200 dark:border-zinc-800 p-1 cursor-pointer bg-white dark:bg-zinc-900"
               />
             </div>
 
@@ -637,12 +718,23 @@ export function SettingsView({ user, categories, paymentMethods }: SettingsViewP
                 className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200/70 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-800/30 text-xs"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <div
-                    className="w-6 h-6 rounded-lg flex items-center justify-center text-white shrink-0"
-                    style={{ backgroundColor: c.color }}
+                  <label
+                    className="relative w-6 h-6 rounded-lg flex items-center justify-center text-white shrink-0 cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+                    title="Click to change color"
                   >
-                    <DynamicIcon name={c.icon} size={12} />
-                  </div>
+                    <input
+                      type="color"
+                      value={c.color}
+                      onChange={(e) => handleUpdateCategoryColor(c.id, e.target.value)}
+                      className="sr-only"
+                    />
+                    <div
+                      className="w-full h-full rounded-lg flex items-center justify-center text-white shadow-2xs"
+                      style={{ backgroundColor: c.color }}
+                    >
+                      <DynamicIcon name={c.icon} size={12} />
+                    </div>
+                  </label>
                   <span className="font-semibold text-slate-800 dark:text-zinc-200 truncate">
                     {c.name}
                   </span>

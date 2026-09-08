@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { generateDistinctColors } from '@/lib/colors';
 
 const categorySchema = z.object({
   name: z.string().min(1, 'Category name is required'),
@@ -85,6 +86,36 @@ export async function deleteCategory(id: string) {
   revalidatePath('/expenses');
   revalidatePath('/settings');
   return { success: true };
+}
+
+export async function randomizeCategoryColors() {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Unauthorized');
+
+  const categories = await prisma.category.findMany({
+    where: { userId: user.id },
+    orderBy: { name: 'asc' },
+  });
+
+  if (categories.length === 0) return { success: true, count: 0 };
+
+  const newColors = generateDistinctColors(categories.length);
+
+  await prisma.$transaction(
+    categories.map((cat, idx) =>
+      prisma.category.update({
+        where: { id: cat.id, userId: user.id },
+        data: { color: newColors[idx] },
+      })
+    )
+  );
+
+  revalidatePath('/expenses');
+  revalidatePath('/settings');
+  revalidatePath('/analytics');
+  revalidatePath('/budgets');
+  revalidatePath('/');
+  return { success: true, count: categories.length };
 }
 
 // Payment Methods
