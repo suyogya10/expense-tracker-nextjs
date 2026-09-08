@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginAction } from '@/actions/auth-actions';
-import { Coins, Lock, User, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
+import { Coins, Lock, User, Eye, EyeOff, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -14,24 +14,40 @@ export function LoginView() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!identifier.trim() || !password) {
-      toast.error('Please enter both username/email and password.');
+    setErrorMessage('');
+
+    const cleanIdentifier = identifier.trim();
+    if (!cleanIdentifier || !password) {
+      const msg = 'Please enter both username/email and password.';
+      setErrorMessage(msg);
+      toast.error(msg);
       return;
     }
 
     setIsLoading(true);
     try {
-      const res = await loginAction({ identifier, password });
-      if (res.success) {
-        toast.success(`Welcome back, ${res.user.name || res.user.username}!`);
-        router.push('/');
-        router.refresh();
+      const res = await loginAction({ identifier: cleanIdentifier, password });
+      if (!res.success) {
+        const msg = res.error || 'Invalid username/email or password.';
+        setErrorMessage(msg);
+        toast.error(msg);
+        return;
       }
+
+      toast.success(`Welcome back, ${res.user.name || res.user.username}!`);
+      router.push('/');
+      router.refresh();
     } catch (err: any) {
-      toast.error(err.message || 'Login failed. Please verify your credentials.');
+      let msg = err?.message || 'Login failed. Please verify your credentials.';
+      if (typeof msg === 'string' && msg.includes('Server Components render')) {
+        msg = 'Invalid username/email or password.';
+      }
+      setErrorMessage(msg);
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
@@ -56,6 +72,14 @@ export function LoginView() {
         {/* Login Box */}
         <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-2xl space-y-5">
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Inline Error Message */}
+            {errorMessage && (
+              <div className="p-3.5 text-xs rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 font-medium flex items-center gap-2.5 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
             {/* Identifier Input */}
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300">
@@ -70,7 +94,10 @@ export function LoginView() {
                   required
                   placeholder="admin or user@example.com"
                   value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
+                  onChange={(e) => {
+                    setIdentifier(e.target.value);
+                    if (errorMessage) setErrorMessage('');
+                  }}
                   className="pl-10 h-12 text-sm"
                   autoComplete="username"
                   autoFocus
@@ -92,7 +119,10 @@ export function LoginView() {
                   required
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errorMessage) setErrorMessage('');
+                  }}
                   className="pl-10 pr-10 h-12 text-sm font-medium"
                   autoComplete="current-password"
                 />

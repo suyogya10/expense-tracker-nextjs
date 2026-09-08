@@ -137,7 +137,11 @@ export function SettingsView({ user, categories, paymentMethods }: SettingsViewP
     if (!username.trim()) return;
     setIsSavingUsername(true);
     try {
-      await changeUsernameAction({ newUsername: username.trim() });
+      const res = await changeUsernameAction({ newUsername: username.trim() });
+      if (!res.success) {
+        toast.error(res.error || 'Failed to update username');
+        return;
+      }
       toast.success(`Username updated to @${username.trim()}`);
       router.refresh();
     } catch (err: any) {
@@ -165,7 +169,11 @@ export function SettingsView({ user, categories, paymentMethods }: SettingsViewP
 
     setIsSavingPassword(true);
     try {
-      await changePasswordAction({ currentPassword, newPassword });
+      const res = await changePasswordAction({ currentPassword, newPassword });
+      if (!res.success) {
+        toast.error(res.error || 'Failed to change password');
+        return;
+      }
       toast.success('Password changed successfully!');
       setCurrentPassword('');
       setNewPassword('');
